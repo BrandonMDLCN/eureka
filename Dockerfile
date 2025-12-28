@@ -1,11 +1,22 @@
-# Use OpenJDK 17 as the base image
-FROM amazoncorretto:21
-# Set the maintainer label (optional)
-LABEL maintainer="your-email@example.com"
-# Add the JAR file to the container
-ARG JAR_FILE=target/*.jar
-COPY ${JAR_FILE} app.jar
-# Expose the port your Spring Boot app runs on
+#
+# Build del proyecto (Multi-Stage)
+# --------------------------------
+#
+# Usamos una imagen de Maven para hacer build de proyecto con Java
+# Llamaremos a este sub-entorno "build"
+# Copiamos todo el contenido del repositorio
+# Ejecutamos el comando mvn clean package (Generara un archivo JAR para el despliegue)
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+COPY . .
+RUN mvn clean package
+
+# Usamos una imagen de Openjdk
+# Exponemos el puerto que nuestro componente va a usar para escuchar peticiones
+# Copiamos desde "build" el JAR generado (la ruta de generacion es la misma  \
+# que veriamos en local) y lo movemos y renombramos en destino como
+# Marcamos el punto de arranque de la imagen con el comando "java -jar
+# app.jar" que ejecutará nuestro componente.
+FROM openjdk:21
 EXPOSE 8761
-# Define the entry point to run the application
+COPY --from=build /target/eureka-0.0.1-SNAPSHOT.jar app.jar
 ENTRYPOINT ["java", "-jar", "/app.jar"]
