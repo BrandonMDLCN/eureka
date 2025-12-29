@@ -1,14 +1,22 @@
-# Usamos una imagen ligera de Java
-FROM eclipse-temurin:21-jre-alpine
-
-# Directorio de trabajo
+# Etapa 1: Compilación (Build)
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
-# Copiamos el JAR (ajusta el nombre según tu proyecto)
-COPY target/*.jar app.jar
+# Copiamos solo el pom y descargamos dependencias (optimiza caché)
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Exponemos el puerto estándar de Eureka
+# Copiamos el código fuente y compilamos
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Etapa 2: Ejecución (Runtime)
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+# Copiamos solo el JAR resultante de la etapa anterior
+COPY --from=build /app/target/*.jar app.jar
+
 EXPOSE 8761
 
-# Ejecutamos la aplicación
 ENTRYPOINT ["java", "-jar", "app.jar"]
